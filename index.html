@@ -1,0 +1,515 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Child Iframe - Penpal Client</title>
+    <!-- Penpal v7 (固定 7.0.4) -->
+    <script src="https://unpkg.com/penpal@7.0.4/dist/penpal.min.js"></script>
+    <style>
+      :root { color-scheme: light; }
+      body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", Arial, sans-serif; margin: 16px; }
+      .card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 12px; margin-bottom: 12px; }
+      .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+      @media (max-width: 720px) { .row { grid-template-columns: 1fr; } }
+      label { font-size: 12px; color: #374151; display: block; margin-bottom: 6px; }
+      input, select, textarea { width: 100%; box-sizing: border-box; padding: 10px; border-radius: 10px; border: 1px solid #d1d5db; }
+      textarea { min-height: 88px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+      .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+      button { padding: 10px 12px; border-radius: 10px; border: 1px solid #d1d5db; background: #fff; cursor: pointer; }
+      button.primary { background: #111827; color: #fff; border-color: #111827; }
+      button.warn { background: #fff7ed; border-color: #fed7aa; }
+      .hint { color: #6b7280; font-size: 12px; line-height: 1.5; }
+      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+      pre { white-space: pre-wrap; word-break: break-word; background: #0b1020; color: #d1e7ff; padding: 12px; border-radius: 12px; overflow: auto; }
+      .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; border: 1px solid #d1d5db; }
+      .badge.ok { background: #ecfdf5; border-color: #a7f3d0; color: #065f46; }
+      .badge.no { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+    </style>
+  </head>
+
+  <body>
+    <h1 style="margin: 0 0 12px;">Child iframe（Penpal v7.0.4）</h1>
+
+    <div class="card">
+      <div class="hint">
+        <div>
+          allowedOrigins：<span class="mono">["https://cake.me"]</span>
+          <span id="connBadge" class="badge no" style="margin-left: 8px;">未連線</span>
+        </div>
+        <div style="margin-top: 6px;">
+          若此頁面不是在 iframe 內（或 parent 未提供方法），會自動進入 <b>Mock 模式</b> 方便你測 UI。
+        </div>
+      </div>
+      <div class="actions" style="margin-top: 10px;">
+        <button id="btnConnect" class="primary">重新連線</button>
+        <button id="btnGetProfile">getCurrentUserProfile()</button>
+        <button id="btnRequestLogin" class="warn">requestLogin()</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 style="margin: 0 0 10px; font-size: 16px;">Profile 表單（ensureAccountAndUpdateProfile）</h2>
+      <div class="row">
+        <div>
+          <label>姓名 name（必填）</label>
+          <input id="name" placeholder="例如：王小明" />
+        </div>
+        <div>
+          <label>Email（必填）</label>
+          <input id="email" placeholder="例如：test@example.com" />
+        </div>
+        <div>
+          <label>手機 phone（選填）</label>
+          <input id="phone" placeholder="例如：+886912345678" />
+        </div>
+        <div>
+          <label>國家/地區 country（UI 顯示值 → 轉 ISO 兩碼）</label>
+          <select id="countryUI">
+            <option value="">（不提供）</option>
+            <option value="台灣">台灣</option>
+            <option value="日本">日本</option>
+            <option value="美國">美國</option>
+            <option value="新加坡">新加坡</option>
+            <option value="香港">香港</option>
+            <option value="韓國">韓國</option>
+            <option value="中國">中國</option>
+            <option value="英國">英國</option>
+            <option value="澳洲">澳洲</option>
+            <option value="加拿大">加拿大</option>
+            <option value="__custom__">自訂（輸入 ISO 兩碼）</option>
+          </select>
+          <input id="countryCustom" style="margin-top: 8px; display:none;" placeholder="例如：TW / JP / US" maxlength="2" />
+          <div class="hint" style="margin-top: 6px;">送出時會轉成 ISO 3166-1 alpha-2（兩碼）。</div>
+        </div>
+
+        <div>
+          <label>education_level（UI → enum）</label>
+          <select id="educationUI">
+            <option value="">（不提供）</option>
+            <option value="未滿高中">未滿高中</option>
+            <option value="高中">高中</option>
+            <option value="副學士/專科">副學士/專科</option>
+            <option value="學士">學士</option>
+            <option value="碩士">碩士</option>
+            <option value="博士">博士</option>
+          </select>
+        </div>
+
+        <div>
+          <label>current_employment_status（UI → enum）</label>
+          <select id="employmentUI">
+            <option value="">（不提供）</option>
+            <option value="在職">在職</option>
+            <option value="待業">待業</option>
+            <option value="就學中">就學中</option>
+            <option value="服役中">服役中</option>
+          </select>
+        </div>
+
+        <div>
+          <label>work_experience（UI → enum）</label>
+          <select id="workExpUI">
+            <option value="">（不提供）</option>
+            <option value="未滿 1 年">未滿 1 年</option>
+            <option value="1-2 年">1-2 年</option>
+            <option value="2-4 年">2-4 年</option>
+            <option value="4-6 年">4-6 年</option>
+            <option value="6-10 年">6-10 年</option>
+            <option value="10-15 年">10-15 年</option>
+            <option value="15 年以上">15 年以上</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="actions" style="margin-top: 12px;">
+        <button id="btnEnsureUpdate" class="primary">ensureAccountAndUpdateProfile()</button>
+      </div>
+
+      <div class="hint" style="margin-top: 10px;">
+        <div>送出 payload 會印在 log，方便你核對轉換後的 enum/ISO 值。</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 style="margin: 0 0 10px; font-size: 16px;">事件追蹤（trackEvent）</h2>
+      <div class="row">
+        <div>
+          <label>eventName</label>
+          <input id="eventName" placeholder="例如：signup_submit" />
+        </div>
+        <div>
+          <label>properties（JSON，可留空）</label>
+          <textarea id="eventProps" placeholder='例如：{"source":"iframe","plan":"pro"}'></textarea>
+        </div>
+      </div>
+      <div class="actions" style="margin-top: 12px;">
+        <button id="btnTrack">trackEvent()</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 style="margin: 0 0 10px; font-size: 16px;">Log</h2>
+      <div class="actions" style="margin-bottom: 8px;">
+        <button id="btnClear">清空</button>
+      </div>
+      <pre id="log"></pre>
+    </div>
+
+    <script>
+      // -----------------------------
+      // Utilities
+      // -----------------------------
+      const $ = (id) => document.getElementById(id);
+      const logEl = $("log");
+      function log(...args) {
+        const line = args
+          .map((x) => (typeof x === "string" ? x : JSON.stringify(x, null, 2)))
+          .join(" ");
+        logEl.textContent = `${new Date().toISOString()}  ${line}\n` + logEl.textContent;
+      }
+      function setBadge(connected, modeText) {
+        const el = $("connBadge");
+        el.className = "badge " + (connected ? "ok" : "no");
+        el.textContent = connected ? `已連線${modeText ? "（" + modeText + "）" : ""}` : `未連線${modeText ? "（" + modeText + "）" : ""}`;
+      }
+      function safeJsonParse(text) {
+        if (!text || !text.trim()) return undefined;
+        try { return JSON.parse(text); } catch (e) { throw new Error("properties JSON 解析失敗，請確認格式正確"); }
+      }
+      function normalizeKey(v) {
+        return String(v ?? "")
+          .trim()
+          .toLowerCase()
+          .replace(/\s+/g, "_");
+      }
+
+      // -----------------------------
+      // Mappings (UI <-> API)
+      // -----------------------------
+      // country: UI display value -> ISO alpha-2
+      const COUNTRY_UI_TO_ISO = {
+        // zh
+        "台灣": "TW",
+        "臺灣": "TW",
+        "日本": "JP",
+        "美國": "US",
+        "新加坡": "SG",
+        "香港": "HK",
+        "韓國": "KR",
+        "中國": "CN",
+        "英國": "GB",
+        "澳洲": "AU",
+        "加拿大": "CA",
+        // en (常見)
+        "taiwan": "TW",
+        "japan": "JP",
+        "united_states": "US",
+        "unitedstates": "US",
+        "usa": "US",
+        "singapore": "SG",
+        "hong_kong": "HK",
+        "korea": "KR",
+        "south_korea": "KR",
+        "china": "CN",
+        "united_kingdom": "GB",
+        "uk": "GB",
+        "australia": "AU",
+        "canada": "CA",
+      };
+
+      const COUNTRY_ISO_TO_UI = {
+        "TW": "台灣",
+        "JP": "日本",
+        "US": "美國",
+        "SG": "新加坡",
+        "HK": "香港",
+        "KR": "韓國",
+        "CN": "中國",
+        "GB": "英國",
+        "AU": "澳洲",
+        "CA": "加拿大",
+      };
+
+      function toCountryISO(uiValue, customIso) {
+        const ui = String(uiValue || "").trim();
+        if (!ui) return undefined;
+        if (ui === "__custom__") {
+          const iso = String(customIso || "").trim().toUpperCase();
+          if (!iso) return undefined;
+          if (!/^[A-Z]{2}$/.test(iso)) throw new Error("country 自訂值需為 ISO 兩碼（A-Z）");
+          return iso;
+        }
+        // allow passing ISO directly
+        if (/^[A-Za-z]{2}$/.test(ui)) return ui.toUpperCase();
+        const key = normalizeKey(ui);
+        const iso = COUNTRY_UI_TO_ISO[ui] || COUNTRY_UI_TO_ISO[key];
+        if (!iso) throw new Error(`country 無法對應：${ui}`);
+        return iso;
+      }
+
+      function toCountryUIFromISO(iso) {
+        if (!iso) return "";
+        const up = String(iso).toUpperCase();
+        return COUNTRY_ISO_TO_UI[up] || up; // 若未在表內，就顯示 ISO 本身
+      }
+
+      // education_level
+      const EDU_UI_TO_ENUM = {
+        "未滿高中": "less_than_high_school",
+        "高中": "high_school",
+        "副學士/專科": "associate",
+        "學士": "bachelor",
+        "碩士": "master",
+        "博士": "doctoral",
+      };
+      const EDU_ENUM_TO_UI = Object.fromEntries(Object.entries(EDU_UI_TO_ENUM).map(([k, v]) => [v, k]));
+
+      function toEnumFromUI(ui, map, allowAlreadyEnum = true) {
+        const v = String(ui || "").trim();
+        if (!v) return undefined;
+        if (allowAlreadyEnum && /^[a-z_]+$/.test(v)) {
+          // 可能已經是 enum（例如 parent 回填後你又直接送出）
+          if (Object.values(map).includes(v)) return v;
+        }
+        const mapped = map[v];
+        if (!mapped) throw new Error(`值無法對應 enum：${v}`);
+        return mapped;
+      }
+
+      function toUIFromEnum(enumValue, reverseMap) {
+        if (!enumValue) return "";
+        return reverseMap[String(enumValue)] || String(enumValue);
+      }
+
+      // employment
+      const EMP_UI_TO_ENUM = {
+        "在職": "employed",
+        "待業": "unemployed",
+        "就學中": "studying",
+        "服役中": "in_military_service",
+      };
+      const EMP_ENUM_TO_UI = Object.fromEntries(Object.entries(EMP_UI_TO_ENUM).map(([k, v]) => [v, k]));
+
+      // work experience
+      const WORK_UI_TO_ENUM = {
+        "未滿 1 年": "_one",
+        "1-2 年": "one_two",
+        "2-4 年": "two_four",
+        "4-6 年": "four_six",
+        "6-10 年": "six_ten",
+        "10-15 年": "ten_fifteen",
+        "15 年以上": "fifteen_",
+      };
+      const WORK_ENUM_TO_UI = Object.fromEntries(Object.entries(WORK_UI_TO_ENUM).map(([k, v]) => [v, k]));
+
+      // -----------------------------
+      // Penpal connection
+      // -----------------------------
+      const ALLOWED_ORIGINS = ["https://cake.me"];
+
+      let remote = null;         // 真的 parent remote
+      let mockRemote = null;     // fallback mock
+      let usingMock = false;
+
+      function buildMockRemote() {
+        let authed = false;
+        let profile = null;
+
+        return {
+          async ensureAccountAndUpdateProfile(payload) {
+            authed = true;
+            profile = {
+              name: payload.name ?? "",
+              email: payload.email ?? "",
+              phone: payload.phone ?? null,
+              country: payload.country ?? null,
+              education_level: payload.education_level ?? null,
+              current_employment_status: payload.current_employment_status ?? null,
+              work_experience: payload.work_experience ?? null,
+            };
+            log("[MOCK] ensureAccountAndUpdateProfile called", payload);
+            return { success: true };
+          },
+          async trackEvent(eventName, properties) {
+            log("[MOCK] trackEvent called", { eventName, properties });
+          },
+          getCurrentUserProfile() {
+            log("[MOCK] getCurrentUserProfile called");
+            return authed ? profile : null;
+          },
+          requestLogin() {
+            log("[MOCK] requestLogin called (show login UI in real parent)");
+          },
+        };
+      }
+
+      async function connectToParent() {
+        remote = null;
+        usingMock = false;
+
+        const inIframe = window.parent && window.parent !== window;
+        if (!inIframe) {
+          usingMock = true;
+          mockRemote = mockRemote || buildMockRemote();
+          setBadge(true, "Mock（非 iframe）");
+          log("未在 iframe 內：改用 Mock 模式");
+          return mockRemote;
+        }
+
+        try {
+          const { WindowMessenger, connect } = window.Penpal;
+
+          const messenger = new WindowMessenger({
+            remoteWindow: window.parent,
+            allowedOrigins: ALLOWED_ORIGINS,
+          });
+
+          const connection = connect({
+            messenger,
+            // child 不提供任何 methods 給 parent
+            methods: {},
+          });
+
+          remote = await connection.promise;
+          usingMock = false;
+          setBadge(true, "Penpal");
+          log("Penpal 連線成功（allowedOrigins）", ALLOWED_ORIGINS);
+          return remote;
+        } catch (err) {
+          usingMock = true;
+          mockRemote = mockRemote || buildMockRemote();
+          setBadge(true, "Mock（連線失敗）");
+          log("Penpal 連線失敗，改用 Mock 模式：", String(err && err.message ? err.message : err));
+          return mockRemote;
+        }
+      }
+
+      function getRemoteOrThrow() {
+        if (usingMock) return mockRemote;
+        if (!remote) throw new Error("尚未建立與 parent 的連線（請按「重新連線」）");
+        return remote;
+      }
+
+      // -----------------------------
+      // UI wiring
+      // -----------------------------
+      $("btnClear").addEventListener("click", () => (logEl.textContent = ""));
+
+      $("countryUI").addEventListener("change", () => {
+        const v = $("countryUI").value;
+        $("countryCustom").style.display = v === "__custom__" ? "block" : "none";
+      });
+
+      $("btnConnect").addEventListener("click", async () => {
+        await connectToParent();
+      });
+
+      $("btnRequestLogin").addEventListener("click", () => {
+        try {
+          const r = getRemoteOrThrow();
+          r.requestLogin();
+          log("requestLogin() called");
+        } catch (e) {
+          log("requestLogin() error:", String(e.message || e));
+        }
+      });
+
+      $("btnGetProfile").addEventListener("click", () => {
+        try {
+          const r = getRemoteOrThrow();
+          const p = r.getCurrentUserProfile();
+          log("getCurrentUserProfile() result:", p);
+
+          if (!p) return;
+
+          // 回填 UI（反向轉換）
+          $("name").value = p.name || "";
+          $("email").value = p.email || "";
+          $("phone").value = p.phone || "";
+
+          const countryUI = toCountryUIFromISO(p.country);
+          // 嘗試選到既有選項，否則走自訂 ISO
+          const countrySelect = $("countryUI");
+          const hasOption = Array.from(countrySelect.options).some((o) => o.value === countryUI);
+          if (hasOption) {
+            countrySelect.value = countryUI;
+            $("countryCustom").style.display = "none";
+            $("countryCustom").value = "";
+          } else if (p.country) {
+            countrySelect.value = "__custom__";
+            $("countryCustom").style.display = "block";
+            $("countryCustom").value = String(p.country).toUpperCase();
+          } else {
+            countrySelect.value = "";
+            $("countryCustom").style.display = "none";
+            $("countryCustom").value = "";
+          }
+
+          $("educationUI").value = toUIFromEnum(p.education_level, EDU_ENUM_TO_UI);
+          $("employmentUI").value = toUIFromEnum(p.current_employment_status, EMP_ENUM_TO_UI);
+          $("workExpUI").value = toUIFromEnum(p.work_experience, WORK_ENUM_TO_UI);
+        } catch (e) {
+          log("getCurrentUserProfile() error:", String(e.message || e));
+        }
+      });
+
+      $("btnEnsureUpdate").addEventListener("click", async () => {
+        try {
+          const r = getRemoteOrThrow();
+
+          const payload = {
+            name: $("name").value.trim(),
+            email: $("email").value.trim(),
+          };
+
+          if (!payload.name) throw new Error("name 為必填");
+          if (!payload.email) throw new Error("email 為必填");
+
+          const phone = $("phone").value.trim();
+          if (phone) payload.phone = phone;
+
+          const countryIso = toCountryISO($("countryUI").value, $("countryCustom").value);
+          if (countryIso) payload.country = countryIso;
+
+          const eduEnum = toEnumFromUI($("educationUI").value, EDU_UI_TO_ENUM);
+          if (eduEnum) payload.education_level = eduEnum;
+
+          const empEnum = toEnumFromUI($("employmentUI").value, EMP_UI_TO_ENUM);
+          if (empEnum) payload.current_employment_status = empEnum;
+
+          const workEnum = toEnumFromUI($("workExpUI").value, WORK_UI_TO_ENUM, true);
+          if (workEnum) payload.work_experience = workEnum;
+
+          log("ensureAccountAndUpdateProfile() payload:", payload);
+          const res = await r.ensureAccountAndUpdateProfile(payload);
+          log("ensureAccountAndUpdateProfile() result:", res);
+        } catch (e) {
+          log("ensureAccountAndUpdateProfile() error:", String(e.message || e));
+        }
+      });
+
+      $("btnTrack").addEventListener("click", async () => {
+        try {
+          const r = getRemoteOrThrow();
+          const eventName = $("eventName").value.trim();
+          if (!eventName) throw new Error("eventName 為必填");
+
+          const props = safeJsonParse($("eventProps").value);
+          log("trackEvent() payload:", { eventName, properties: props });
+
+          await r.trackEvent(eventName, props);
+          log("trackEvent() done");
+        } catch (e) {
+          log("trackEvent() error:", String(e.message || e));
+        }
+      });
+
+      // auto connect on load
+      (async function init() {
+        setBadge(false);
+        await connectToParent();
+      })();
+    </script>
+  </body>
+</html>
