@@ -1,515 +1,363 @@
-<!doctype html>
-<html lang="zh-Hant">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Child Iframe - Penpal Client</title>
-    <!-- Penpal v7 (固定 7.0.4) -->
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cake 2026 Tech Career Fair Registration</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.89.0/dist/umd/supabase.min.js"></script>
     <script src="https://unpkg.com/penpal@7.0.4/dist/penpal.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.12.0/dist/cdn.min.js"></script>
     <style>
-      :root { color-scheme: light; }
-      body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", Arial, sans-serif; margin: 16px; }
-      .card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 12px; margin-bottom: 12px; }
-      .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-      @media (max-width: 720px) { .row { grid-template-columns: 1fr; } }
-      label { font-size: 12px; color: #374151; display: block; margin-bottom: 6px; }
-      input, select, textarea { width: 100%; box-sizing: border-box; padding: 10px; border-radius: 10px; border: 1px solid #d1d5db; }
-      textarea { min-height: 88px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
-      .actions { display: flex; flex-wrap: wrap; gap: 8px; }
-      button { padding: 10px 12px; border-radius: 10px; border: 1px solid #d1d5db; background: #fff; cursor: pointer; }
-      button.primary { background: #111827; color: #fff; border-color: #111827; }
-      button.warn { background: #fff7ed; border-color: #fed7aa; }
-      .hint { color: #6b7280; font-size: 12px; line-height: 1.5; }
-      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
-      pre { white-space: pre-wrap; word-break: break-word; background: #0b1020; color: #d1e7ff; padding: 12px; border-radius: 12px; overflow: auto; }
-      .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; border: 1px solid #d1d5db; }
-      .badge.ok { background: #ecfdf5; border-color: #a7f3d0; color: #065f46; }
-      .badge.no { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+      [x-cloak] { display: none !important; }
+      body::-webkit-scrollbar { display: none; }
+      html, body { overflow-x: hidden; height: auto; }
+      .fade-in { animation: fadeIn 0.3s ease-in-out; }
+      @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+      input, select, label, span, p, button, div { font-size: 14px !important; }
+
+      .custom-select {
+        appearance: none !important;
+        -webkit-appearance: none !important;
+        -moz-appearance: none !important;
+        background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2024%2024%22%20stroke%3D%22%239ca3af%22%3E%3Cpath%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%222%22%20d%3D%22M19%209l-7%207-7-7%22%2F%3E%3C%2Fsvg%3E");
+        background-repeat: no-repeat;
+        background-position: right 1rem center;
+        background-size: 1.25rem;
+        padding-right: 2.5rem !important;
+      }
     </style>
-  </head>
+</head>
+<body class="bg-white font-sans antialiased text-gray-800">
 
-  <body>
-    <h1 style="margin: 0 0 12px;">Child iframe（Penpal v7.0.4）</h1>
+<div x-data="careerFairApp()" x-init="init()" x-cloak class="max-w-xl mx-auto relative border-x border-gray-50 shadow-sm min-h-screen">
 
-    <div class="card">
-      <div class="hint">
-        <div>
-          allowedOrigins：<span class="mono">["https://staging.cake.me", "http://localhost:4000", "http://lvh.me:4000", "http://www.lvh.me:4000"]</span>
-          <span id="connBadge" class="badge no" style="margin-left: 8px;">未連線</span>
-        </div>
-        <div style="margin-top: 6px;">
-          若此頁面不是在 iframe 內（或 parent 未提供方法），會自動進入 <b>Mock 模式</b> 方便你測 UI。
-        </div>
-      </div>
-      <div class="actions" style="margin-top: 10px;">
-        <button id="btnConnect" class="primary">重新連線</button>
-        <button id="btnGetProfile">getCurrentUserProfile()</button>
-        <button id="btnRequestLogin" class="warn">requestLogin()</button>
-      </div>
+    <div x-show="isProcessing" class="fixed inset-0 bg-white/70 z-50 flex flex-col items-center justify-center">
+        <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-[#13AB67]"></div>
+        <p class="text-[#13AB67] mt-3 font-bold">處理中...</p>
     </div>
 
-    <div class="card">
-      <h2 style="margin: 0 0 10px; font-size: 16px;">Profile 表單（ensureAccountAndUpdateProfile）</h2>
-      <div class="row">
-        <div>
-          <label>姓名 name（必填）</label>
-          <input id="name" placeholder="例如：王小明" />
+    <div x-show="isSubmitted" class="fade-in text-center py-20 px-8 space-y-6">
+        <div class="w-20 h-20 bg-green-100 text-[#13AB67] rounded-full flex items-center justify-center mx-auto shadow-sm">
+            <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
         </div>
-        <div>
-          <label>Email（必填）</label>
-          <input id="email" placeholder="例如：test@example.com" />
+        <h2 class="text-xl font-bold">報名成功！</h2>
+        <div class="bg-green-50 p-6 rounded-2xl border border-green-100 text-green-900 text-left">
+            確認信與電子票券將於 5 分鐘內寄送至您的信箱：<br>
+            <span class="font-bold underline text-[#13AB67]" x-text="form.email"></span>
         </div>
-        <div>
-          <label>手機 phone（選填）</label>
-          <input id="phone" placeholder="例如：+886912345678" />
-        </div>
-        <div>
-          <label>國家/地區 country（UI 顯示值 → 轉 ISO 兩碼）</label>
-          <select id="countryUI">
-            <option value="">（不提供）</option>
-            <option value="台灣">台灣</option>
-            <option value="日本">日本</option>
-            <option value="美國">美國</option>
-            <option value="新加坡">新加坡</option>
-            <option value="香港">香港</option>
-            <option value="韓國">韓國</option>
-            <option value="中國">中國</option>
-            <option value="英國">英國</option>
-            <option value="澳洲">澳洲</option>
-            <option value="加拿大">加拿大</option>
-            <option value="__custom__">自訂（輸入 ISO 兩碼）</option>
-          </select>
-          <input id="countryCustom" style="margin-top: 8px; display:none;" placeholder="例如：TW / JP / US" maxlength="2" />
-          <div class="hint" style="margin-top: 6px;">送出時會轉成 ISO 3166-1 alpha-2（兩碼）。</div>
-        </div>
-
-        <div>
-          <label>education_level（UI → enum）</label>
-          <select id="educationUI">
-            <option value="">（不提供）</option>
-            <option value="未滿高中">未滿高中</option>
-            <option value="高中">高中</option>
-            <option value="副學士/專科">副學士/專科</option>
-            <option value="學士">學士</option>
-            <option value="碩士">碩士</option>
-            <option value="博士">博士</option>
-          </select>
-        </div>
-
-        <div>
-          <label>current_employment_status（UI → enum）</label>
-          <select id="employmentUI">
-            <option value="">（不提供）</option>
-            <option value="在職">在職</option>
-            <option value="待業">待業</option>
-            <option value="就學中">就學中</option>
-            <option value="服役中">服役中</option>
-          </select>
-        </div>
-
-        <div>
-          <label>work_experience（UI → enum）</label>
-          <select id="workExpUI">
-            <option value="">（不提供）</option>
-            <option value="未滿 1 年">未滿 1 年</option>
-            <option value="1-2 年">1-2 年</option>
-            <option value="2-4 年">2-4 年</option>
-            <option value="4-6 年">4-6 年</option>
-            <option value="6-10 年">6-10 年</option>
-            <option value="10-15 年">10-15 年</option>
-            <option value="15 年以上">15 年以上</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="actions" style="margin-top: 12px;">
-        <button id="btnEnsureUpdate" class="primary">ensureAccountAndUpdateProfile()</button>
-      </div>
-
-      <div class="hint" style="margin-top: 10px;">
-        <div>送出 payload 會印在 log，方便你核對轉換後的 enum/ISO 值。</div>
-      </div>
     </div>
 
-    <div class="card">
-      <h2 style="margin: 0 0 10px; font-size: 16px;">事件追蹤（trackEvent）</h2>
-      <div class="row">
-        <div>
-          <label>eventName</label>
-          <input id="eventName" placeholder="例如：signup_submit" />
+    <div x-show="!isSubmitted" class="fade-in">
+        <div class="bg-white border-b border-gray-50 px-8 pt-6 pb-2 flex justify-between items-center sticky top-0 z-10">
+            <div class="flex items-center flex-1">
+                <template x-for="i in [1, 2, 3, 4, 5]">
+                    <div class="flex items-center flex-1 last:flex-none">
+                        <div class="w-8 h-8 rounded-full flex items-center justify-center transition-colors duration-300 shadow-sm shrink-0"
+                             :class="currentStep >= i ? 'bg-[#13AB67] text-white' : 'bg-gray-100 text-gray-300'">
+                            <span class="text-xs font-black" x-text="i"></span>
+                        </div>
+                        <div x-show="i < 5" class="h-[2px] flex-1 mx-2 bg-gray-100 rounded-full overflow-hidden">
+                            <div class="h-full bg-[#13AB67] transition-all duration-500" :style="'width: ' + (currentStep > i ? '100%' : '0%')"></div>
+                        </div>
+                    </div>
+                </template>
+            </div>
         </div>
-        <div>
-          <label>properties（JSON，可留空）</label>
-          <textarea id="eventProps" placeholder='例如：{"source":"iframe","plan":"pro"}'></textarea>
+
+        <div class="px-8 py-6 pb-24">
+
+            <div x-show="currentStep === 1" class="fade-in space-y-5">
+                <div>
+                    <label class="block font-bold text-gray-400 mb-1">姓名 *</label>
+                    <input type="text" x-model="form.name" class="w-full p-4 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#13AB67]">
+                </div>
+                <div>
+                    <label class="block font-bold text-gray-400 mb-1">Email *</label>
+                    <input type="email" x-model="form.email" class="w-full p-4 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#13AB67]">
+                </div>
+                <div>
+                    <label class="block font-bold text-gray-400 mb-1">手機號碼 *</label>
+                    <input type="tel" x-model="form.phone" placeholder="0912345678" class="w-full p-4 border border-gray-200 rounded-xl outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="relative" @click.away="showNatDropdown = false">
+                        <label class="block font-bold text-gray-400 mb-1">國籍 *</label>
+                        <input type="text" x-model="natSearchTerm" @focus="showNatDropdown = true" placeholder="請選擇" class="w-full p-4 border border-gray-200 rounded-xl bg-white outline-none focus:ring-2 focus:ring-[#13AB67] custom-select">
+                        <div x-show="showNatDropdown" class="absolute z-20 w-full mt-1 bg-white border border-gray-100 rounded-xl shadow-xl max-h-40 overflow-y-auto">
+                            <template x-for="n in natOptions" :key="n.value">
+                                <div @click="form.nationality = n.value; natSearchTerm = n.zh; showNatDropdown = false" class="p-4 hover:bg-green-50 cursor-pointer text-sm" x-text="n.zh"></div>
+                            </template>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block font-bold text-gray-400 mb-1">性別 *</label>
+                        <select x-model="form.gender" class="w-full p-4 border border-gray-200 rounded-xl bg-white outline-none custom-select">
+                            <option value="">請選擇</option>
+                            <template x-for="g in genderOptions"><option :value="g.value" x-text="g.zh"></option></template>
+                        </select>
+                    </div>
+                </div>
+                <div x-show="errorMessage" class="text-red-500 font-bold text-xs" x-html="errorMessage"></div>
+                <button type="button" @click="toStep(2)" class="w-full bg-[#13AB67] text-white py-5 rounded-2xl font-bold shadow-lg shadow-green-50">下一步</button>
+            </div>
+
+            <div x-show="currentStep === 2" class="fade-in space-y-5">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block font-bold text-gray-400 mb-1">最高學歷 *</label>
+                        <select x-model="form.education_level" class="w-full p-4 border border-gray-200 rounded-xl bg-white custom-select">
+                            <option value="">請選擇</option>
+                            <template x-for="e in eduOptions"><option :value="e.value" x-text="e.zh"></option></template>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-bold text-gray-400 mb-1">科系領域 *</label>
+                        <select x-model="form.field_of_study" class="w-full p-4 border border-gray-200 rounded-xl bg-white custom-select">
+                            <option value="">請選擇</option>
+                            <template x-for="m in majorOptions"><option :value="m.value" x-text="m.zh"></option></template>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block font-bold text-gray-400 mb-1">目前身分 *</label>
+                    <select x-model="form.employment_status" class="w-full p-4 border border-gray-200 rounded-xl bg-white custom-select">
+                        <option value="">請選擇</option>
+                        <template x-for="s in statusOptions"><option :value="s.value" x-text="s.zh"></option></template>
+                    </select>
+                </div>
+                <div x-show="form.employment_status === 'Employed'">
+                    <label class="block font-bold text-gray-400 mb-1">目前職稱 *</label>
+                    <input type="text" x-model="form.job_role" class="w-full p-4 border border-gray-200 rounded-xl bg-green-50/20 outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block font-bold text-gray-400 mb-1">工作年資 *</label>
+                        <select x-model="form.work_experience" class="w-full p-4 border border-gray-200 rounded-xl bg-white custom-select">
+                            <option value="">請選擇</option>
+                            <template x-for="ex in expOptions"><option :value="ex.value" x-text="ex.zh"></option></template>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-bold text-gray-400 mb-1">目前產業 *</label>
+                        <select x-model="form.industry" class="w-full p-4 border border-gray-200 rounded-xl bg-white custom-select">
+                            <option value="">請選擇</option>
+                            <template x-for="ind in industryOptions"><option :value="ind.value" x-text="ind.zh"></option></template>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex gap-4">
+                    <button type="button" @click="currentStep = 1; scrollUp()" class="flex-1 bg-gray-50 text-gray-400 py-5 rounded-2xl font-bold">上一步</button>
+                    <button type="button" @click="toStep(3)" class="flex-1 bg-[#13AB67] text-white py-5 rounded-2xl font-bold shadow-lg shadow-green-50">下一步</button>
+                </div>
+            </div>
+
+            <div x-show="currentStep === 3" class="fade-in space-y-4">
+                <h4 class="font-bold text-gray-700 text-[11px] uppercase tracking-wider">上午場講座預約 (Time Slot 1)</h4>
+                <div class="space-y-3">
+                    <label class="flex items-center p-4 border border-gray-100 rounded-2xl bg-gray-50 cursor-pointer">
+                        <input type="checkbox" x-model="skipSlot1" @change="toggleSkip(1)" class="h-5 w-5 text-[#13AB67] rounded border-gray-300">
+                        <span class="ml-3 font-bold text-gray-600">不參加此時段講座</span>
+                    </label>
+                    <template x-for="s in sessionsData.filter(x => String(x.time_slot).trim() === '1')" :key="s.id">
+                        <label class="flex items-center justify-between p-4 border rounded-2xl transition-all"
+                               :class="form.selected_sessions.includes(s.id) ? 'bg-green-50 border-[#13AB67]' : (s.booked >= s.capacity || skipSlot1 ? 'bg-gray-50 opacity-50' : 'hover:bg-gray-50 cursor-pointer')">
+                            <div class="flex items-start">
+                                <input type="checkbox" :value="s.id" x-model="form.selected_sessions" :disabled="skipSlot1 || (s.booked >= s.capacity && !form.selected_sessions.includes(s.id))" class="mt-0.5 h-4 w-4 text-[#13AB67] rounded">
+                                <span class="ml-3 font-bold text-gray-700 text-sm leading-tight" x-text="s.name"></span>
+                            </div>
+                            <span x-show="s.booked >= s.capacity" class="text-[10px] px-2 py-0.5 rounded-full font-bold bg-red-50 text-red-500 shrink-0">已額滿</span>
+                        </label>
+                    </template>
+                </div>
+                <div class="flex gap-4 pt-6">
+                    <button type="button" @click="currentStep = 2; scrollUp()" class="flex-1 bg-gray-50 text-gray-400 py-5 rounded-2xl font-bold">上一步</button>
+                    <button type="button" @click="toStep(4)" class="flex-1 bg-[#13AB67] text-white py-5 rounded-2xl font-bold">下一步</button>
+                </div>
+            </div>
+
+            <div x-show="currentStep === 4" class="fade-in space-y-4">
+                <h4 class="font-bold text-gray-700 text-[11px] uppercase tracking-wider">下午場講座預約 (Time Slot 2)</h4>
+                <div class="space-y-3">
+                    <label class="flex items-center p-4 border border-gray-100 rounded-2xl bg-gray-50 cursor-pointer">
+                        <input type="checkbox" x-model="skipSlot2" @change="toggleSkip(2)" class="h-5 w-5 text-[#13AB67] rounded border-gray-300">
+                        <span class="ml-3 font-bold text-gray-600">不參加此時段講座</span>
+                    </label>
+                    <template x-for="s in sessionsData.filter(x => String(x.time_slot).trim() === '2')" :key="s.id">
+                        <label class="flex items-center justify-between p-4 border rounded-2xl transition-all"
+                               :class="form.selected_sessions.includes(s.id) ? 'bg-green-50 border-[#13AB67]' : (s.booked >= s.capacity || skipSlot2 ? 'bg-gray-50 opacity-50' : 'hover:bg-gray-50 cursor-pointer')">
+                            <div class="flex items-start">
+                                <input type="checkbox" :value="s.id" x-model="form.selected_sessions" :disabled="skipSlot2 || (s.booked >= s.capacity && !form.selected_sessions.includes(s.id))" class="mt-0.5 h-4 w-4 text-[#13AB67] rounded">
+                                <span class="ml-3 font-bold text-gray-700 text-sm leading-tight" x-text="s.name"></span>
+                            </div>
+                            <span x-show="s.booked >= s.capacity" class="text-[10px] px-2 py-0.5 rounded-full font-bold bg-red-50 text-red-500 shrink-0">已額滿</span>
+                        </label>
+                    </template>
+                </div>
+                <div class="flex gap-4 pt-6">
+                    <button type="button" @click="currentStep = 3; scrollUp()" class="flex-1 bg-gray-50 text-gray-400 py-5 rounded-2xl font-bold">上一步</button>
+                    <button type="button" @click="toStep(5)" class="flex-1 bg-[#13AB67] text-white py-5 rounded-2xl font-bold">下一步</button>
+                </div>
+            </div>
+
+            <div x-show="currentStep === 5" class="fade-in space-y-6">
+                <div class="p-5 bg-gray-50 rounded-2xl border border-gray-100 space-y-4">
+                    <label class="block font-bold text-gray-700 text-xs">是否需要高鐵新竹站接駁車？ *</label>
+                    <div class="flex gap-8">
+                        <label class="flex items-center cursor-pointer font-medium"><input type="radio" value="yes" x-model="form.shuttle" class="mr-2 h-5 w-5 text-[#13AB67]"> 是</label>
+                        <label class="flex items-center cursor-pointer font-medium"><input type="radio" value="no" x-model="form.shuttle" class="mr-2 h-5 w-5 text-[#13AB67]"> 否</label>
+                    </div>
+                    <div x-show="form.shuttle === 'yes'" class="grid grid-cols-2 gap-3 pt-2">
+                        <select x-model="form.shuttle_time_to" class="w-full p-3 border border-gray-200 rounded-xl bg-white text-[10px] custom-select">
+                            <option value="">去程</option>
+                            <option value="09:30 AM">09:30 AM</option><option value="10:30 AM">10:30 AM</option>
+                        </select>
+                        <select x-model="form.shuttle_time_from" class="w-full p-3 border border-gray-200 rounded-xl bg-white text-[10px] custom-select">
+                            <option value="">回程</option>
+                            <option value="04:00 PM">04:00 PM</option><option value="05:00 PM">05:00 PM</option><option value="No">不需回程</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block font-bold text-gray-400 mb-1">從哪裡得知本活動？ *</label>
+                    <select x-model="form.referral_source" class="w-full p-4 border border-gray-200 rounded-xl bg-white custom-select">
+                        <option value="">請選擇</option>
+                        <template x-for="rf in referralOptions"><option :value="rf.value" x-text="rf.zh"></option></template>
+                    </select>
+                </div>
+                <div class="space-y-4 pt-4 border-t">
+                    <label class="flex items-start text-[11px] leading-relaxed text-gray-500 cursor-pointer">
+                        <input type="checkbox" x-model="form.consent" class="mt-1 mr-3 h-5 w-5 text-[#13AB67] rounded border-gray-300">
+                        <span>我已閱讀並同意<a href="https://global.cake.me/cake-terms-notice" target="_blank" class="underline text-[#13AB67] font-bold">個人資料蒐集與使用同意書</a>*</span>
+                    </label>
+                </div>
+                <div x-show="errorMessage" class="text-red-500 font-bold text-xs" x-html="errorMessage"></div>
+                <div class="flex gap-4">
+                    <button type="button" @click="currentStep = 4; scrollUp()" class="flex-1 bg-gray-50 text-gray-400 py-5 rounded-2xl font-bold">上一步</button>
+                    <button type="button" @click="finalSubmit" :disabled="!form.consent || isProcessing" class="flex-1 bg-[#13AB67] text-white py-5 rounded-2xl font-bold shadow-lg shadow-green-100 disabled:opacity-50 transition-all active:scale-95">索取票券</button>
+                </div>
+            </div>
+
         </div>
-      </div>
-      <div class="actions" style="margin-top: 12px;">
-        <button id="btnTrack">trackEvent()</button>
-      </div>
     </div>
+</div>
 
-    <div class="card">
-      <h2 style="margin: 0 0 10px; font-size: 16px;">Log</h2>
-      <div class="actions" style="margin-bottom: 8px;">
-        <button id="btnClear">清空</button>
-      </div>
-      <pre id="log"></pre>
-    </div>
+<script>
+  const S_URL = 'https://oasswvmjfxuirfqhnuyh.supabase.co';
+  const S_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9hc3N3dm1qZnh1aXJmcWhudXloIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk2NTM1NzUsImV4cCI6MjA4NTIyOTU3NX0.K2Ph6ZHxLr8CuAqXL6r8OPZlCDX08WUh7IpReaOXlVg';
+  const cakeSupabase = window.supabase.createClient(S_URL, S_KEY);
 
-    <script>
-      // -----------------------------
-      // Utilities
-      // -----------------------------
-      const $ = (id) => document.getElementById(id);
-      const logEl = $("log");
-      function log(...args) {
-        const line = args
-          .map((x) => (typeof x === "string" ? x : JSON.stringify(x, null, 2)))
-          .join(" ");
-        logEl.textContent = `${new Date().toISOString()}  ${line}\n` + logEl.textContent;
-      }
-      function setBadge(connected, modeText) {
-        const el = $("connBadge");
-        el.className = "badge " + (connected ? "ok" : "no");
-        el.textContent = connected ? `已連線${modeText ? "（" + modeText + "）" : ""}` : `未連線${modeText ? "（" + modeText + "）" : ""}`;
-      }
-      function safeJsonParse(text) {
-        if (!text || !text.trim()) return undefined;
-        try { return JSON.parse(text); } catch (e) { throw new Error("properties JSON 解析失敗，請確認格式正確"); }
-      }
-      function normalizeKey(v) {
-        return String(v ?? "")
-          .trim()
-          .toLowerCase()
-          .replace(/\s+/g, "_");
-      }
+  function careerFairApp() {
+    return {
+      currentStep: 1, isProcessing: false, isSubmitted: false, errorMessage: '', sessionsData: [],
+      showNatDropdown: false, natSearchTerm: '', parentApi: null,
+      skipSlot1: false, skipSlot2: false,
 
-      // -----------------------------
-      // Mappings (UI <-> API)
-      // -----------------------------
-      // country: UI display value -> ISO alpha-2
-      const COUNTRY_UI_TO_ISO = {
-        // zh
-        "台灣": "TW",
-        "臺灣": "TW",
-        "日本": "JP",
-        "美國": "US",
-        "新加坡": "SG",
-        "香港": "HK",
-        "韓國": "KR",
-        "中國": "CN",
-        "英國": "GB",
-        "澳洲": "AU",
-        "加拿大": "CA",
-        // en (常見)
-        "taiwan": "TW",
-        "japan": "JP",
-        "united_states": "US",
-        "unitedstates": "US",
-        "usa": "US",
-        "singapore": "SG",
-        "hong_kong": "HK",
-        "korea": "KR",
-        "south_korea": "KR",
-        "china": "CN",
-        "united_kingdom": "GB",
-        "uk": "GB",
-        "australia": "AU",
-        "canada": "CA",
-      };
+      maps: {
+        edu: { '高中職': 'high_school', 'Bachelor': 'bachelor', 'Master': 'master', 'PhD': 'doctoral' },
+        eduReverse: { 'high_school': '高中職', 'bachelor': 'Bachelor', 'master': 'Master', 'doctoral': 'PhD' },
+        status: { 'Employed': 'employed', '待業中': 'unemployed', '學生': 'studying' },
+        statusReverse: { 'employed': 'Employed', 'unemployed': '待業中', 'studying': '學生' },
+        exp: { '<1': '_one', '1-3': 'one_two', '3-5': 'two_four', '5-10': 'four_six', '10-15': 'ten_fifteen', '15+': 'fifteen_' },
+        expReverse: { '_one': '<1', 'one_two': '1-3', 'two_four': '3-5', 'four_six': '5-10', 'ten_fifteen': '10-15', 'fifteen_': '15+' },
+        nat: { '台灣': 'TW', '馬來西亞': 'MY', '印尼': 'ID', '越南': 'VN', '美國': 'US' },
+        natReverse: { 'TW': '台灣', 'MY': '馬來西亞', 'ID': '印尼', 'VN': '越南', 'US': '美國' }
+      },
 
-      const COUNTRY_ISO_TO_UI = {
-        "TW": "台灣",
-        "JP": "日本",
-        "US": "美國",
-        "SG": "新加坡",
-        "HK": "香港",
-        "KR": "韓國",
-        "CN": "中國",
-        "GB": "英國",
-        "AU": "澳洲",
-        "CA": "加拿大",
-      };
+      form: { name: '', email: '', phone: '', nationality: '', gender: '', education_level: '', field_of_study: '', employment_status: '', job_role: '', work_experience: '', industry: '', selected_sessions: [], shuttle: 'no', shuttle_time_to: '', shuttle_time_from: '', referral_source: '', consent: false },
 
-      function toCountryISO(uiValue, customIso) {
-        const ui = String(uiValue || "").trim();
-        if (!ui) return undefined;
-        if (ui === "__custom__") {
-          const iso = String(customIso || "").trim().toUpperCase();
-          if (!iso) return undefined;
-          if (!/^[A-Z]{2}$/.test(iso)) throw new Error("country 自訂值需為 ISO 兩碼（A-Z）");
-          return iso;
-        }
-        // allow passing ISO directly
-        if (/^[A-Za-z]{2}$/.test(ui)) return ui.toUpperCase();
-        const key = normalizeKey(ui);
-        const iso = COUNTRY_UI_TO_ISO[ui] || COUNTRY_UI_TO_ISO[key];
-        if (!iso) throw new Error(`country 無法對應：${ui}`);
-        return iso;
-      }
+      toggleSkip(slot) {
+        const slotStr = String(slot);
+        const sids = this.sessionsData.filter(x => String(x.time_slot).trim() === slotStr).map(x => x.id);
+        this.form.selected_sessions = this.form.selected_sessions.filter(id => !sids.includes(id));
+      },
 
-      function toCountryUIFromISO(iso) {
-        if (!iso) return "";
-        const up = String(iso).toUpperCase();
-        return COUNTRY_ISO_TO_UI[up] || up; // 若未在表內，就顯示 ISO 本身
-      }
-
-      // education_level
-      const EDU_UI_TO_ENUM = {
-        "未滿高中": "less_than_high_school",
-        "高中": "high_school",
-        "副學士/專科": "associate",
-        "學士": "bachelor",
-        "碩士": "master",
-        "博士": "doctoral",
-      };
-      const EDU_ENUM_TO_UI = Object.fromEntries(Object.entries(EDU_UI_TO_ENUM).map(([k, v]) => [v, k]));
-
-      function toEnumFromUI(ui, map, allowAlreadyEnum = true) {
-        const v = String(ui || "").trim();
-        if (!v) return undefined;
-        if (allowAlreadyEnum && /^[a-z_]+$/.test(v)) {
-          // 可能已經是 enum（例如 parent 回填後你又直接送出）
-          if (Object.values(map).includes(v)) return v;
-        }
-        const mapped = map[v];
-        if (!mapped) throw new Error(`值無法對應 enum：${v}`);
-        return mapped;
-      }
-
-      function toUIFromEnum(enumValue, reverseMap) {
-        if (!enumValue) return "";
-        return reverseMap[String(enumValue)] || String(enumValue);
-      }
-
-      // employment
-      const EMP_UI_TO_ENUM = {
-        "在職": "employed",
-        "待業": "unemployed",
-        "就學中": "studying",
-        "服役中": "in_military_service",
-      };
-      const EMP_ENUM_TO_UI = Object.fromEntries(Object.entries(EMP_UI_TO_ENUM).map(([k, v]) => [v, k]));
-
-      // work experience
-      const WORK_UI_TO_ENUM = {
-        "未滿 1 年": "_one",
-        "1-2 年": "one_two",
-        "2-4 年": "two_four",
-        "4-6 年": "four_six",
-        "6-10 年": "six_ten",
-        "10-15 年": "ten_fifteen",
-        "15 年以上": "fifteen_",
-      };
-      const WORK_ENUM_TO_UI = Object.fromEntries(Object.entries(WORK_UI_TO_ENUM).map(([k, v]) => [v, k]));
-
-      // -----------------------------
-      // Penpal connection
-      // -----------------------------
-      const ALLOWED_ORIGINS = ["https://staging.cake.me", "http://localhost:4000", "http://lvh.me:4000", "http://www.lvh.me:4000"];
-
-      let remote = null;         // 真的 parent remote
-      let mockRemote = null;     // fallback mock
-      let usingMock = false;
-
-      function buildMockRemote() {
-        let authed = false;
-        let profile = null;
-
-        return {
-          async ensureAccountAndUpdateProfile(payload) {
-            authed = true;
-            profile = {
-              name: payload.name ?? "",
-              email: payload.email ?? "",
-              phone: payload.phone ?? null,
-              country: payload.country ?? null,
-              education_level: payload.education_level ?? null,
-              current_employment_status: payload.current_employment_status ?? null,
-              work_experience: payload.work_experience ?? null,
-            };
-            log("[MOCK] ensureAccountAndUpdateProfile called", payload);
-            return { success: true };
-          },
-          async trackEvent(eventName, properties) {
-            log("[MOCK] trackEvent called", { eventName, properties });
-          },
-          getCurrentUserProfile() {
-            log("[MOCK] getCurrentUserProfile called");
-            return authed ? profile : null;
-          },
-          requestLogin() {
-            log("[MOCK] requestLogin called (show login UI in real parent)");
-          },
-        };
-      }
-
-      async function connectToParent() {
-        remote = null;
-        usingMock = false;
-
-        const inIframe = window.parent && window.parent !== window;
-        if (!inIframe) {
-          usingMock = true;
-          mockRemote = mockRemote || buildMockRemote();
-          setBadge(true, "Mock（非 iframe）");
-          log("未在 iframe 內：改用 Mock 模式");
-          return mockRemote;
-        }
-
+      async init() {
+        // --- 重點修正：先執行 Supabase 資料抓取，不等待 Penpal ---
         try {
-          const { WindowMessenger, connect } = window.Penpal;
-
-          const messenger = new WindowMessenger({
-            remoteWindow: window.parent,
-            allowedOrigins: ALLOWED_ORIGINS,
-          });
-
-          const connection = connect({
-            messenger,
-            // child 不提供任何 methods 給 parent
-            methods: {},
-          });
-
-          remote = await connection.promise;
-          usingMock = false;
-          setBadge(true, "Penpal");
-          log("Penpal 連線成功（allowedOrigins）", ALLOWED_ORIGINS);
-          return remote;
-        } catch (err) {
-          usingMock = true;
-          mockRemote = mockRemote || buildMockRemote();
-          setBadge(true, "Mock（連線失敗）");
-          log("Penpal 連線失敗，改用 Mock 模式：", String(err && err.message ? err.message : err));
-          return mockRemote;
-        }
-      }
-
-      function getRemoteOrThrow() {
-        if (usingMock) return mockRemote;
-        if (!remote) throw new Error("尚未建立與 parent 的連線（請按「重新連線」）");
-        return remote;
-      }
-
-      // -----------------------------
-      // UI wiring
-      // -----------------------------
-      $("btnClear").addEventListener("click", () => (logEl.textContent = ""));
-
-      $("countryUI").addEventListener("change", () => {
-        const v = $("countryUI").value;
-        $("countryCustom").style.display = v === "__custom__" ? "block" : "none";
-      });
-
-      $("btnConnect").addEventListener("click", async () => {
-        await connectToParent();
-      });
-
-      $("btnRequestLogin").addEventListener("click", () => {
-        try {
-          const r = getRemoteOrThrow();
-          r.requestLogin();
-          log("requestLogin() called");
+          const { data, error } = await cakeSupabase.from('sessions').select('*').order('id');
+          if (error) throw error;
+          this.sessionsData = data || [];
+          console.log("Sessions Loaded:", this.sessionsData.length);
         } catch (e) {
-          log("requestLogin() error:", String(e.message || e));
+          console.error("Supabase Error:", e.message);
         }
-      });
 
-      $("btnGetProfile").addEventListener("click", () => {
+        // --- Penpal 連線放在後面，且加上 try-catch 防止卡死 ---
+        const connection = Penpal.connectToParent({ allowedOrigins: ["https://staging.cake.me", "http://localhost:4000", "http://lvh.me:4000", "http://www.lvh.me:4000"] });
         try {
-          const r = getRemoteOrThrow();
-          const p = r.getCurrentUserProfile();
-          log("getCurrentUserProfile() result:", p);
+          this.parentApi = await connection.promise;
+          const profile = await this.parentApi.getCurrentUserProfile();
+          if (profile) this.prefillForm(profile);
+        } catch (e) {
+          console.warn("Penpal Handshake skipped (Not in iframe or timeout)");
+        }
+      },
 
-          if (!p) return;
+      prefillForm(p) {
+        this.form.name = p.name || ''; this.form.email = p.email || ''; this.form.phone = p.phone || '';
+        if(p.country) { this.form.nationality = this.maps.natReverse[p.country] || ''; this.natSearchTerm = this.form.nationality; }
+        if(p.education_level) this.form.education_level = this.maps.eduReverse[p.education_level] || '';
+        if(p.current_employment_status) this.form.employment_status = this.maps.statusReverse[p.current_employment_status] || '';
+        if(p.work_experience) this.form.work_experience = this.maps.expReverse[p.work_experience] || '';
+      },
 
-          // 回填 UI（反向轉換）
-          $("name").value = p.name || "";
-          $("email").value = p.email || "";
-          $("phone").value = p.phone || "";
+      scrollUp() { window.scrollTo({ top: 0, behavior: 'smooth' }); },
 
-          const countryUI = toCountryUIFromISO(p.country);
-          // 嘗試選到既有選項，否則走自訂 ISO
-          const countrySelect = $("countryUI");
-          const hasOption = Array.from(countrySelect.options).some((o) => o.value === countryUI);
-          if (hasOption) {
-            countrySelect.value = countryUI;
-            $("countryCustom").style.display = "none";
-            $("countryCustom").value = "";
-          } else if (p.country) {
-            countrySelect.value = "__custom__";
-            $("countryCustom").style.display = "block";
-            $("countryCustom").value = String(p.country).toUpperCase();
-          } else {
-            countrySelect.value = "";
-            $("countryCustom").style.display = "none";
-            $("countryCustom").value = "";
+      async toStep(target) {
+        this.errorMessage = '';
+        if (target > this.currentStep) {
+          if (this.currentStep === 1 && (!this.form.name || !this.form.email || !this.form.phone || !this.form.nationality)) { this.errorMessage = '⚠️ 請填寫必填欄位'; return; }
+          if (this.currentStep === 2 && (!this.form.education_level || !this.form.employment_status || !this.form.work_experience)) { this.errorMessage = '⚠️ 請填寫必填欄位'; return; }
+        }
+        this.currentStep = target; this.scrollUp();
+        this.parentApi?.trackEvent('step_reached', { step: target });
+      },
+
+      async finalSubmit() {
+        this.errorMessage = '';
+        if (!this.form.referral_source || !this.form.consent) { this.errorMessage = '⚠️ 請完成最後確認。'; return; }
+        this.isProcessing = true;
+        try {
+          if (this.parentApi) {
+            await this.parentApi.ensureAccountAndUpdateProfile({
+              name: this.form.name, email: this.form.email, phone: this.form.phone,
+              country: this.maps.nat[this.form.nationality],
+              education_level: this.maps.edu[this.form.education_level],
+              current_employment_status: this.maps.status[this.form.employment_status],
+              work_experience: this.maps.exp[this.form.work_experience]
+            });
           }
+          const rid = crypto.randomUUID();
+          const { error: rErr } = await cakeSupabase.from('registrants').insert({ id: rid, email: this.form.email });
+          if (rErr) { if (rErr.code === '23505') throw new Error('您已報名過此活動，請至信箱確認票券。'); throw rErr; }
 
-          $("educationUI").value = toUIFromEnum(p.education_level, EDU_ENUM_TO_UI);
-          $("employmentUI").value = toUIFromEnum(p.current_employment_status, EMP_ENUM_TO_UI);
-          $("workExpUI").value = toUIFromEnum(p.work_experience, WORK_ENUM_TO_UI);
-        } catch (e) {
-          log("getCurrentUserProfile() error:", String(e.message || e));
-        }
-      });
+          await cakeSupabase.from('registrant_profiles').insert({
+            registrant_id: rid, name: this.form.name, phone: this.form.phone, nationality: this.form.nationality, gender: this.form.gender,
+            education_level: this.form.education_level, field_of_study: this.form.field_of_study, employment_status: this.form.employment_status,
+            work_experience: this.form.work_experience, industry: this.form.industry, job_role: this.form.job_role,
+            shuttle_needed: this.form.shuttle === 'yes', shuttle_time_to: this.form.shuttle_time_to, shuttle_time_from: this.form.shuttle_time_from, referral_source: this.form.referral_source
+          });
 
-      $("btnEnsureUpdate").addEventListener("click", async () => {
-        try {
-          const r = getRemoteOrThrow();
+          for (let sid of this.form.selected_sessions) {
+            await cakeSupabase.from('registrations_sessions').insert({ registrant_id: rid, session_id: sid });
+            await cakeSupabase.rpc('increment_booked', { row_id: sid });
+          }
+          this.parentApi?.trackEvent('registration_complete');
+          this.isSubmitted = true; this.scrollUp();
+        } catch (e) { this.errorMessage = e.message; } finally { this.isProcessing = false; }
+      },
 
-          const payload = {
-            name: $("name").value.trim(),
-            email: $("email").value.trim(),
-          };
-
-          if (!payload.name) throw new Error("name 為必填");
-          if (!payload.email) throw new Error("email 為必填");
-
-          const phone = $("phone").value.trim();
-          if (phone) payload.phone = phone;
-
-          const countryIso = toCountryISO($("countryUI").value, $("countryCustom").value);
-          if (countryIso) payload.country = countryIso;
-
-          const eduEnum = toEnumFromUI($("educationUI").value, EDU_UI_TO_ENUM);
-          if (eduEnum) payload.education_level = eduEnum;
-
-          const empEnum = toEnumFromUI($("employmentUI").value, EMP_UI_TO_ENUM);
-          if (empEnum) payload.current_employment_status = empEnum;
-
-          const workEnum = toEnumFromUI($("workExpUI").value, WORK_UI_TO_ENUM, true);
-          if (workEnum) payload.work_experience = workEnum;
-
-          log("ensureAccountAndUpdateProfile() payload:", payload);
-          const res = await r.ensureAccountAndUpdateProfile(payload);
-          log("ensureAccountAndUpdateProfile() result:", res);
-        } catch (e) {
-          log("ensureAccountAndUpdateProfile() error:", String(e.message || e));
-        }
-      });
-
-      $("btnTrack").addEventListener("click", async () => {
-        try {
-          const r = getRemoteOrThrow();
-          const eventName = $("eventName").value.trim();
-          if (!eventName) throw new Error("eventName 為必填");
-
-          const props = safeJsonParse($("eventProps").value);
-          log("trackEvent() payload:", { eventName, properties: props });
-
-          await r.trackEvent(eventName, props);
-          log("trackEvent() done");
-        } catch (e) {
-          log("trackEvent() error:", String(e.message || e));
-        }
-      });
-
-      // auto connect on load
-      (async function init() {
-        setBadge(false);
-        await connectToParent();
-      })();
-    </script>
-  </body>
+      genderOptions: [{ zh: '男', value: '男' }, { zh: '女', value: '女' }, { zh: '其他', value: '其他' }, { zh: '不便透露', value: '不便透露' }],
+      eduOptions: [{ zh: '高中職', value: '高中職' }, { zh: '大學', value: 'Bachelor' }, { zh: '碩士', value: 'Master' }, { zh: '博士', value: 'PhD' }],
+      statusOptions: [{ zh: '在職中', value: 'Employed' }, { zh: '待業中', value: '待業中' }, { zh: '學生', value: '學生' }],
+      expOptions: [{ zh: '1 年以下', value: '<1' }, { zh: '1-3 年', value: '1-3' }, { zh: '3-5 年', value: '3-5' }, { zh: '5-10 年', value: '5-10' }, { zh: '10-15 年', value: '10-15' }, { zh: '15 年以上', value: '15+' }],
+      majorOptions: [{ zh: '電機／電子工程', value: '電機／電子工程' }, { zh: '資工／資訊相關', value: '資工／資訊相關' }, { zh: '機械／工業工程', value: '機械／工業工程' }, { zh: '化工／材料工程', value: '化工／材料工程' }, { zh: '半導體／物理／科學', value: '半導體／物理／科學' }, { zh: '商管／財金相關', value: '商管／財金相關' }, { zh: '設計／人文社科', value: '設計／人文社科' }, { zh: '其他', value: '其他' }],
+      industryOptions: [{ zh: '半導體／晶圓製造', value: '半導體／晶圓製造' }, { zh: '電子／電機製造', value: '電子／電機製造' }, { zh: '資訊軟體／網路服務', value: '資訊軟體／網路服務' }, { zh: 'AI／資料科學', value: 'AI／資料科學' }, { zh: '機械／自動化', value: '機械／自動化' }],
+      referralOptions: [{ zh: 'Cake FB / IG / LineOA', value: 'Cake FB / IG / LineOA' }, { zh: 'Cake 夥伴 EDM 邀請', value: 'Cake 夥伴 EDM 邀請' }, { zh: '朋友推薦', value: '朋友推薦' }, { zh: 'Dcard / PTT', value: 'Dcard / PTT' }, { zh: '學校', value: '學校' }, { zh: 'TechOrange', value: 'TechOrange' }],
+      natOptions: [{ zh: '台灣', value: '台灣' }, { zh: '馬來西亞', value: '馬來西亞' }, { zh: '印尼', value: '印尼' }, { zh: '越南', value: '越南' }, { zh: '美國', value: '美國' }]
+    }
+  }
+</script>
+</body>
 </html>
