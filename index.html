@@ -298,6 +298,7 @@
           parentConnectPromise = connection.promise;
           try {
             parentApi = await parentConnectPromise;
+            console.warn('> getCurrentUserProfile called!')
             const profile = await this.callParentApi('getCurrentUserProfile');
             if (profile) this.prefillForm(profile);
           } catch (e) {
