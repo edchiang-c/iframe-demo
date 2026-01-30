@@ -284,7 +284,12 @@
         }
 
         // --- Penpal 連線放在後面，且加上 try-catch 防止卡死 ---
-        const connection = Penpal.connectToParent({ allowedOrigins: ["https://staging.cake.me", "http://localhost:4000", "http://lvh.me:4000", "http://www.lvh.me:4000"] });
+        const connection = Penpal.connect({
+          messenger: new Penpal.WindowMessenger({
+            remoteWindow: window.parent,
+            allowedOrigins: ["https://staging.cake.me", "http://localhost:4000", "http://lvh.me:4000", "http://www.lvh.me:4000"]
+          })
+        });
         try {
           this.parentApi = await connection.promise;
           const profile = await this.parentApi.getCurrentUserProfile();
