@@ -295,7 +295,7 @@
           console.log('start connection')
           parentApi = await connection.promise;
           console.log(parentApi);
-          const profile = parentApi.getCurrentUserProfile();
+          const profile = await parentApi.getCurrentUserProfile();
           console.log(profile)
           if (profile) this.prefillForm(profile);
           console.log('prefill success!')
