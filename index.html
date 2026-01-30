@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -249,6 +250,7 @@
 
   function careerFairApp() {
     let parentApi = null;
+    let parentConnectPromise = null;
     return {
       currentStep: 1, isProcessing: false, isSubmitted: false, errorMessage: '', sessionsData: [],
       showNatDropdown: false, natSearchTerm: '',
@@ -285,24 +287,39 @@
         }
 
         // --- Penpal 連線放在後面，且加上 try-catch 防止卡死 ---
-        const connection = Penpal.connect({
-          messenger: new Penpal.WindowMessenger({
-            remoteWindow: window.parent,
-            allowedOrigins: ["https://staging.cake.me", "http://localhost:4000", "http://lvh.me:4000", "http://www.lvh.me:4000"]
-          })
-        });
-        try {
-          console.log('start connection')
-          parentApi = await connection.promise;
-          console.log(parentApi);
-          const profile = await parentApi.getCurrentUserProfile();
-          console.log(profile)
-          if (profile) this.prefillForm(profile);
-          console.log('prefill success!')
-        } catch (e) {
-          console.warn(e);
-          console.warn("Penpal Handshake skipped (Not in iframe or timeout)");
+        if (window.parent !== window) {
+          const connection = Penpal.connect({
+            messenger: new Penpal.WindowMessenger({
+              remoteWindow: window.parent,
+              allowedOrigins: ["https://staging.cake.me", "http://localhost:4000", "http://lvh.me:4000", "http://www.lvh.me:4000"]
+            }),
+            timeout: 8000
+          });
+          parentConnectPromise = connection.promise;
+          try {
+            parentApi = await parentConnectPromise;
+            const profile = await this.callParentApi('getCurrentUserProfile');
+            if (profile) this.prefillForm(profile);
+          } catch (e) {
+            console.warn("Penpal Handshake skipped (Not in iframe or timeout)");
+          }
         }
+      },
+
+      async callParentApi(method, ...args) {
+        if (!parentConnectPromise) return null;
+        const retries = 3;
+        for (let attempt = 0; attempt <= retries; attempt++) {
+          try {
+            parentApi = parentApi || await parentConnectPromise;
+            if (!parentApi || typeof parentApi[method] !== 'function') return null;
+            return await parentApi[method](...args);
+          } catch (e) {
+            if (attempt === retries) throw e;
+            await new Promise(resolve => setTimeout(resolve, 300 * (attempt + 1)));
+          }
+        }
+        return null;
       },
 
       prefillForm(p) {
@@ -322,7 +339,7 @@
           if (this.currentStep === 2 && (!this.form.education_level || !this.form.employment_status || !this.form.work_experience)) { this.errorMessage = '⚠️ 請填寫必填欄位'; return; }
         }
         this.currentStep = target; this.scrollUp();
-        parentApi?.trackEvent('step_reached', { step: target });
+        this.callParentApi('trackEvent', 'step_reached', { step: target }).catch(() => {});
       },
 
       async finalSubmit() {
@@ -330,8 +347,8 @@
         if (!this.form.referral_source || !this.form.consent) { this.errorMessage = '⚠️ 請完成最後確認。'; return; }
         this.isProcessing = true;
         try {
-          if (parentApi) {
-            await parentApi.ensureAccountAndUpdateProfile({
+          if (parentConnectPromise) {
+            await this.callParentApi('ensureAccountAndUpdateProfile', {
               name: this.form.name, email: this.form.email, phone: this.form.phone,
               country: this.maps.nat[this.form.nationality],
               education_level: this.maps.edu[this.form.education_level],
@@ -354,7 +371,7 @@
             await cakeSupabase.from('registrations_sessions').insert({ registrant_id: rid, session_id: sid });
             await cakeSupabase.rpc('increment_booked', { row_id: sid });
           }
-          parentApi?.trackEvent('registration_complete');
+          this.callParentApi('trackEvent', 'registration_complete').catch(() => {});
           this.isSubmitted = true; this.scrollUp();
         } catch (e) { this.errorMessage = e.message; } finally { this.isProcessing = false; }
       },
