@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -248,9 +247,11 @@
   const S_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9hc3N3dm1qZnh1aXJmcWhudXloIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk2NTM1NzUsImV4cCI6MjA4NTIyOTU3NX0.K2Ph6ZHxLr8CuAqXL6r8OPZlCDX08WUh7IpReaOXlVg';
   const cakeSupabase = window.supabase.createClient(S_URL, S_KEY);
 
+  let _parentApi = null;
+  let _parentConnectPromise = null;
+  let _initCalled = false;
+
   function careerFairApp() {
-    let parentApi = null;
-    let parentConnectPromise = null;
     return {
       currentStep: 1, isProcessing: false, isSubmitted: false, errorMessage: '', sessionsData: [],
       showNatDropdown: false, natSearchTerm: '',
@@ -276,7 +277,11 @@
       },
 
       async init() {
-        // --- 重點修正：先執行 Supabase 資料抓取，不等待 Penpal ---
+        // 防止重複初始化
+        if (_initCalled) return;
+        _initCalled = true;
+
+        // --- 先執行 Supabase 資料抓取，不等待 Penpal ---
         try {
           const { data, error } = await cakeSupabase.from('sessions').select('*').order('id');
           if (error) throw error;
@@ -295,10 +300,9 @@
             }),
             timeout: 8000
           });
-          parentConnectPromise = connection.promise;
+          _parentConnectPromise = connection.promise;
           try {
-            parentApi = await parentConnectPromise;
-            console.warn('> getCurrentUserProfile called!')
+            _parentApi = await _parentConnectPromise;
             const profile = await this.callParentApi('getCurrentUserProfile');
             if (profile) this.prefillForm(profile);
           } catch (e) {
@@ -308,13 +312,13 @@
       },
 
       async callParentApi(method, ...args) {
-        if (!parentConnectPromise) return null;
+        if (!_parentConnectPromise) return null;
         const retries = 3;
         for (let attempt = 0; attempt <= retries; attempt++) {
           try {
-            parentApi = parentApi || await parentConnectPromise;
-            if (!parentApi || typeof parentApi[method] !== 'function') return null;
-            return await parentApi[method](...args);
+            _parentApi = _parentApi || await _parentConnectPromise;
+            if (!_parentApi || typeof _parentApi[method] !== 'function') return null;
+            return await _parentApi[method](...args);
           } catch (e) {
             if (attempt === retries) throw e;
             await new Promise(resolve => setTimeout(resolve, 300 * (attempt + 1)));
@@ -348,7 +352,7 @@
         if (!this.form.referral_source || !this.form.consent) { this.errorMessage = '⚠️ 請完成最後確認。'; return; }
         this.isProcessing = true;
         try {
-          if (parentConnectPromise) {
+          if (_parentConnectPromise) {
             await this.callParentApi('ensureAccountAndUpdateProfile', {
               name: this.form.name, email: this.form.email, phone: this.form.phone,
               country: this.maps.nat[this.form.nationality],
