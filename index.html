@@ -291,6 +291,7 @@
           })
         });
         try {
+          console.log('start connection')
           this.parentApi = await connection.promise;
           console.log(this.parentApi);
           const profile = this.parentApi.getCurrentUserProfile();
@@ -298,6 +299,7 @@
           if (profile) this.prefillForm(profile);
           console.log('prefill success!')
         } catch (e) {
+          console.warn(e);
           console.warn("Penpal Handshake skipped (Not in iframe or timeout)");
         }
       },
