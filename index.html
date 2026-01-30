@@ -248,9 +248,10 @@
   const cakeSupabase = window.supabase.createClient(S_URL, S_KEY);
 
   function careerFairApp() {
+    let parentApi = null;
     return {
       currentStep: 1, isProcessing: false, isSubmitted: false, errorMessage: '', sessionsData: [],
-      showNatDropdown: false, natSearchTerm: '', parentApi: null,
+      showNatDropdown: false, natSearchTerm: '',
       skipSlot1: false, skipSlot2: false,
 
       maps: {
@@ -292,9 +293,9 @@
         });
         try {
           console.log('start connection')
-          this.parentApi = await connection.promise;
-          console.log(this.parentApi);
-          const profile = this.parentApi.getCurrentUserProfile();
+          parentApi = await connection.promise;
+          console.log(parentApi);
+          const profile = parentApi.getCurrentUserProfile();
           console.log(this.profile)
           if (profile) this.prefillForm(profile);
           console.log('prefill success!')
@@ -321,7 +322,7 @@
           if (this.currentStep === 2 && (!this.form.education_level || !this.form.employment_status || !this.form.work_experience)) { this.errorMessage = '⚠️ 請填寫必填欄位'; return; }
         }
         this.currentStep = target; this.scrollUp();
-        this.parentApi?.trackEvent('step_reached', { step: target });
+        parentApi?.trackEvent('step_reached', { step: target });
       },
 
       async finalSubmit() {
@@ -329,8 +330,8 @@
         if (!this.form.referral_source || !this.form.consent) { this.errorMessage = '⚠️ 請完成最後確認。'; return; }
         this.isProcessing = true;
         try {
-          if (this.parentApi) {
-            await this.parentApi.ensureAccountAndUpdateProfile({
+          if (parentApi) {
+            await parentApi.ensureAccountAndUpdateProfile({
               name: this.form.name, email: this.form.email, phone: this.form.phone,
               country: this.maps.nat[this.form.nationality],
               education_level: this.maps.edu[this.form.education_level],
@@ -353,7 +354,7 @@
             await cakeSupabase.from('registrations_sessions').insert({ registrant_id: rid, session_id: sid });
             await cakeSupabase.rpc('increment_booked', { row_id: sid });
           }
-          this.parentApi?.trackEvent('registration_complete');
+          parentApi?.trackEvent('registration_complete');
           this.isSubmitted = true; this.scrollUp();
         } catch (e) { this.errorMessage = e.message; } finally { this.isProcessing = false; }
       },
